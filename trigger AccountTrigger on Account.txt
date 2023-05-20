@@ -1,0 +1,107 @@
+trigger AccountTrigger on Account (after insert, after update) {	
+    if (Trigger.isAfter) {
+        if (Trigger.isInsert) {
+            AccountTriggerHandler.createDefaultCustomerContact(Trigger.new);
+        }
+        if (Trigger.isUpdate) {
+            
+        system.debug('condition checked-8');
+            AccountTriggerHandler.updateAccount(Trigger.new);
+        }
+    }
+}
+
+--------------------------------------------------------------------------------------------------------------------
+
+public class AccountTriggerHandler {
+    public static void createDefaultCustomerContact(List<Account> accounts) {
+        List<Contact> contactsToInsert = new List<Contact>();
+        
+        for (Account acc : accounts) {
+            if (acc.Type == 'Customer' && acc.IsActive__c == true ) {
+                system.debug('aac.id:'+acc.id);
+                Contact defaultContact = new Contact();
+                defaultContact.FirstName = acc.Name;
+                defaultContact.LastName = 'Customer Representative';
+                defaultContact.AccountId = acc.Id;
+                defaultContact.Email = acc.Company_Email__c;
+                defaultContact.Phone = acc.Phone;
+                contactsToInsert.add(defaultContact);
+            }
+        }
+        
+        if (!contactsToInsert.isEmpty()) {
+            insert contactsToInsert;
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------------------------------
+// Test Class
+
+@IsTest
+public class AccountTriggerHandlerTest {
+    @IsTest
+    public static void testCreateDefaultCustomerContact() {
+        // Create a test account
+        Account testAccount = new Account(
+            Name = 'Test Account',
+            Type = 'Customer',
+            IsActive__c = true,
+            Company_Email__c = 'test@example.com',
+            Phone = '1234567890'
+        );
+        
+        // Insert the test account
+        insert testAccount;
+        
+        // Trigger the account trigger handler
+        Test.startTest();
+        AccountTriggerHandler.createDefaultCustomerContact(new List<Account>{testAccount});
+        Test.stopTest();
+        
+        // Retrieve the created contact
+        Contact createdContact = [SELECT Id, FirstName, LastName, AccountId, Email, Phone FROM Contact WHERE AccountId = :testAccount.Id LIMIT 1];
+        
+        // Assert the contact has been created with the correct values
+        System.assertEquals(testAccount.Name, createdContact.FirstName);
+        System.assertEquals('Customer Representative', createdContact.LastName);
+        System.assertEquals(testAccount.Id, createdContact.AccountId);
+        System.assertEquals(testAccount.Company_Email__c, createdContact.Email);
+        System.assertEquals(testAccount.Phone, createdContact.Phone);
+    }
+    
+    @IsTest
+    public static void testUpdateAccount() {
+        // Create a test account
+        Account testAccount = new Account(
+            Name = 'Test Account',
+            Type = 'Customer',
+            IsActive__c = true,
+            Company_Email__c = 'test@example.com',
+            Phone = '1234567890'
+        );
+        
+        // Insert the test account
+        insert testAccount;
+        
+        // Trigger the account trigger handler
+        Test.startTest();
+        AccountTriggerHandler.updateAccount(new List<Account>{testAccount});
+        Test.stopTest();
+        
+        // Retrieve the created contact
+        Contact createdContact = [SELECT Id, FirstName, LastName, AccountId, Email, Phone FROM Contact WHERE AccountId = :testAccount.Id LIMIT 1];
+        
+        // Assert the contact has been created with the correct values
+        System.assertEquals(testAccount.Name, createdContact.FirstName);
+        System.assertEquals('Customer Representative', createdContact.LastName);
+        System.assertEquals(testAccount.Id, createdContact.AccountId);
+        System.assertEquals(testAccount.Company_Email__c, createdContact.Email);
+        System.assertEquals(testAccount.Phone, createdContact.Phone);
+    }
+}
+
+
+
